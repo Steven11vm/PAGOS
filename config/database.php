@@ -35,23 +35,6 @@ function getDbConnection() {
 // Ensure connection is available before proceeding
 $conn = getDbConnection();
 
-// Insert sample invoices if they don't exist
-$stmt = $conn->prepare("SELECT COUNT(*) FROM invoices");
-$stmt->execute();
-$invoiceCount = $stmt->fetchColumn();
-
-if ($invoiceCount == 0) {
-    // Insert sample data for invoices
-    $conn->exec("
-        INSERT INTO invoices (invoice_number, date, supplier_name, nit, amount, subtotal, tax, description, sap_code, purchase_order, cost_center, payment_method, bank_account, due_date, payment_terms, status, created_by) 
-        VALUES 
-        ('FAC-001', '2023-05-15', 'Proveedor A', '900123456-7', 1190000.00, 1000000.00, 190000.00, 'Compra de materiales de oficina', 'SAP001', 'OC-2023-001', 'CC-ADM', 'Transferencia', '123456789', '2023-06-15', 'Pago a 30 días', 'pendiente', 1),
-        ('FAC-002', '2023-05-20', 'Proveedor B', '800987654-3', 2380000.00, 2000000.00, 380000.00, 'Servicios de consultoría', 'SAP002', 'OC-2023-002', 'CC-IT', 'Cheque', '987654321', '2023-06-20', 'Pago a 30 días', 'aprobado_subgerente', 1),
-        ('FAC-003', '2023-05-25', 'Proveedor C', '700456789-1', 3570000.00, 3000000.00, 570000.00, 'Equipos de cómputo', 'SAP003', 'OC-2023-003', 'CC-IT', 'Transferencia', '456789123', '2023-06-25', 'Pago a 30 días', 'aprobado_gerente', 1),
-        ('FAC-004', '2023-06-01', 'Proveedor D', '600123789-5', 4760000.00, 4000000.00, 760000.00, 'Servicios de mantenimiento', 'SAP004', 'OC-2023-004', 'CC-MNT', 'Transferencia', '789123456', '2023-07-01', 'Pago a 30 días', 'completado', 1),
-        ('FAC-005', '2023-06-05', 'Proveedor E', '500987321-2', 5950000.00, 5000000.00, 950000.00, 'Materiales de construcción', 'SAP005', 'OC-2023-005', 'CC-CONST', 'Cheque', '321789456', '2023-07-05', 'Pago a 30 días', 'rechazado', 1);
-    ");
-}
 
 // Create database tables if they don't exist
 function createDatabaseTables() {

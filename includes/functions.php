@@ -193,99 +193,53 @@ function addInvoiceItem($invoice_id, $concept, $description, $quantity, $unit_pr
 
 function approveInvoice($invoice_id, $user_id, $role, $comments = '') {
     $conn = getDbConnection();
-    
+
     try {
         $conn->beginTransaction();
-        
-        // Get current invoice status
-        $stmt = $conn->prepare("SELECT status FROM invoices WHERE id = :invoice_id");
-        $stmt->bindParam(':invoice_id', $invoice_id);
-        $stmt->execute();
-        $current_status = $stmt->fetchColumn();
-        
-        // Determine new status based on current status, regardless of role
-        $new_status = '';
-        
-        // Todos los usuarios pueden aprobar en cualquier etapa
-        if ($current_status == 'pendiente') {
-            $new_status = 'aprobado_subgerente';
-        } elseif ($current_status == 'aprobado_subgerente') {
-            $new_status = 'aprobado_gerente';
-        } elseif ($current_status == 'aprobado_gerente') {
-            $new_status = 'aprobado_contador';
-        }
-        
-        if (empty($new_status)) {
-            return false;
-        }
-        
-        // Update invoice status
-        $stmt = $conn->prepare("UPDATE invoices SET status = :status WHERE id = :invoice_id");
-        $stmt->bindParam(':status', $new_status);
-        $stmt->bindParam(':invoice_id', $invoice_id);
-        $stmt->execute();
-        
-        // Record approval action
-        $action = 'approve';
+
+        // Registrar la aprobación del rol actual
         $stmt = $conn->prepare("
             INSERT INTO invoice_approvals (invoice_id, user_id, user_role, action, comments)
-            VALUES (:invoice_id, :user_id, :user_role, :action, :comments)
+            VALUES (:invoice_id, :user_id, :user_role, 'approve', :comments)
         ");
-        
         $stmt->bindParam(':invoice_id', $invoice_id);
         $stmt->bindParam(':user_id', $user_id);
         $stmt->bindParam(':user_role', $role);
-        $stmt->bindParam(':action', $action);
         $stmt->bindParam(':comments', $comments);
         $stmt->execute();
-        
-        // Verificar si la factura tiene las tres aprobaciones necesarias
-        if ($new_status == 'aprobado_contador') {
-            // Verificar si tiene aprobación de subgerente
-            $stmt = $conn->prepare("
-                SELECT COUNT(*) FROM invoice_approvals 
-                WHERE invoice_id = :invoice_id 
-                AND action = 'approve' 
-            ");
+
+        // Verificar si ya existe una aprobación de cada uno de los 3 roles
+        $stmt = $conn->prepare("
+            SELECT DISTINCT user_role FROM invoice_approvals
+            WHERE invoice_id = :invoice_id AND action = 'approve'
+        ");
+        $stmt->bindParam(':invoice_id', $invoice_id);
+        $stmt->execute();
+        $roles_approved = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Si los tres roles han aprobado, marcar como completado
+        $required_roles = ['subgerente', 'gerente', 'contador'];
+        if (count(array_intersect($required_roles, $roles_approved)) === 3) {
+            $stmt = $conn->prepare("UPDATE invoices SET status = 'completado' WHERE id = :invoice_id");
             $stmt->bindParam(':invoice_id', $invoice_id);
             $stmt->execute();
-            $has_subgerente_approval = $stmt->fetchColumn() >= 1;
-            
-            // Verificar si tiene aprobación de gerente
-            $stmt = $conn->prepare("
-                SELECT COUNT(*) FROM invoice_approvals 
-                WHERE invoice_id = :invoice_id 
-                AND action = 'approve' 
-            ");
+        } else {
+            // Si no está completado aún, poner el estado como 'en proceso'
+            $stmt = $conn->prepare("UPDATE invoices SET status = 'en_proceso' WHERE id = :invoice_id");
             $stmt->bindParam(':invoice_id', $invoice_id);
             $stmt->execute();
-            $has_gerente_approval = $stmt->fetchColumn() >= 2;
-            
-            // Verificar si tiene aprobación de contador
-            $stmt = $conn->prepare("
-                SELECT COUNT(*) FROM invoice_approvals 
-                WHERE invoice_id = :invoice_id 
-                AND action = 'approve' 
-            ");
-            $stmt->bindParam(':invoice_id', $invoice_id);
-            $stmt->execute();
-            $has_contador_approval = $stmt->fetchColumn() >= 3;
-            
-            // Solo marcar como completado si tiene las tres aprobaciones
-            if ($has_subgerente_approval && $has_gerente_approval && $has_contador_approval) {
-                $stmt = $conn->prepare("UPDATE invoices SET status = 'completado' WHERE id = :invoice_id");
-                $stmt->bindParam(':invoice_id', $invoice_id);
-                $stmt->execute();
-            }
         }
-        
+
         $conn->commit();
         return true;
+
     } catch (Exception $e) {
         $conn->rollBack();
+        error_log("Error al aprobar factura: " . $e->getMessage());
         return false;
     }
 }
+
 
 function rejectInvoice($invoice_id, $user_id, $role, $comments = '') {
     $conn = getDbConnection();
@@ -369,7 +323,7 @@ function getStatusLabel($status) {
         case 'rechazado':
             return 'Rechazado';
         default:
-            return 'Desconocido';
+            return 'En proceso';
     }
 }
 

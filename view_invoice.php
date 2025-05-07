@@ -131,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve'])) {
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                     <h1 class="h2">Detalles de Factura #<?php echo $invoice['id']; ?></h1>
-                    <a href="index.php" class="btn btn-outline-primary">
+                    <a href="pending_approvals.php" class="btn btn-outline-primary">
                         <i class="fas fa-arrow-left me-1"></i> Volver
                     </a>
                 </div>
@@ -229,24 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['approve'])) {
                             </div>
                         </div>
                         
-                        <?php if (canApproveInvoice($role, $invoice['status'])): ?>
-                        <div class="card mb-4 shadow-sm">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="mb-0">Aprobar Factura</h5>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" action="">
-                                    <div class="mb-3">
-                                        <label for="comments" class="form-label">Comentarios (opcional)</label>
-                                        <textarea class="form-control" id="comments" name="comments" rows="3"></textarea>
-                                    </div>
-                                    <button type="submit" name="approve" class="btn btn-success">
-                                        <i class="fas fa-check me-1"></i> Aprobar Factura
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                        <?php endif; ?>
+                        
                     </div>
                     
                     <div class="col-md-6">
